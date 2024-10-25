@@ -28,7 +28,7 @@ export class ShortcutInputComponent implements ControlValueAccessor, AfterViewIn
   @Input({transform: booleanAttribute}) checkToModifier: boolean = true;
   public shortcut: string = '';
   private modifiers: string[] = ['Control', 'Alt', 'Shift', 'CapsLock', 'Meta'];
-  private pressedKeys: string[] = [];
+  private pressedKeys: Set<string> = new Set();
   private destroyRef: DestroyRef = inject(DestroyRef)
   private lastValidShortcut: string = '';
 
@@ -62,7 +62,7 @@ export class ShortcutInputComponent implements ControlValueAccessor, AfterViewIn
       )
       .subscribe((event: KeyboardEvent) => {
         event.preventDefault();
-        this.pressedKeys.push(event.key);
+        this.pressedKeys.add(event.key);
 
         if (this.checkToModifier) {
           this.updateShortcut();
@@ -74,10 +74,9 @@ export class ShortcutInputComponent implements ControlValueAccessor, AfterViewIn
     fromEvent<KeyboardEvent>(this.inputEl.nativeElement, 'keyup')
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((event: KeyboardEvent) => {
-        this.pressedKeys = this.pressedKeys
-          .filter((key: string) => key !== event.key);
+        this.pressedKeys.delete(event.key);
 
-        if (!this.pressedKeys.length && !this.isValidShortcut() && this.checkToModifier) {
+        if (!this.pressedKeys.size && !this.isValidShortcut() && this.checkToModifier) {
           this.shortcut = this.lastValidShortcut || '';
         }
       });
@@ -85,7 +84,7 @@ export class ShortcutInputComponent implements ControlValueAccessor, AfterViewIn
 
   private updateShortcut(): void {
     if (!this.checkToModifier) {
-      this.shortcut = `${this.shortcut}${this.pressedKeys.at(-1)} `
+      this.shortcut = `${this.shortcut}${Array.from(this.pressedKeys).at(-1)} `
       return;
     }
 
@@ -94,12 +93,13 @@ export class ShortcutInputComponent implements ControlValueAccessor, AfterViewIn
       return;
     }
 
-    const {modifiers, otherKey} = this.getModifierAndOtherKeys(this.pressedKeys);
+    const {modifiers, otherKey} = this.getModifierAndOtherKeys(Array.from(this.pressedKeys));
     const shortcut: string = [...modifiers, otherKey].join(' ');
 
     if (this.isValidShortcut(shortcut)) {
       this.shortcut = shortcut;
       this.lastValidShortcut = this.shortcut;
+      this.pressedKeys.clear();
       this.onChange(this.shortcut);
     } else if (!this.lastValidShortcut) {
       this.shortcut = shortcut;
@@ -107,7 +107,7 @@ export class ShortcutInputComponent implements ControlValueAccessor, AfterViewIn
   }
 
   private hasModifier(): boolean {
-    return this.pressedKeys
+    return Array.from(this.pressedKeys)
       .some((key: string) => this.modifiers.includes(key));
   }
 

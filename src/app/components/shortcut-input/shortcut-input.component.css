@@ -1,4 +1,6 @@
 .shortcut-input {
+  width: 100%;
+  max-width: 500px;
   padding: 8px;
   border: 1px solid #ccc;
   border-radius: 4px;
